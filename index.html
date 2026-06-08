@@ -1,0 +1,85 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Color Palette Extractor</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f0f23;color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}
+.ob{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:1000;display:flex;justify-content:center;align-items:center}.ob.hide{display:none}
+.oc{background:#1a1a3e;border-radius:20px;padding:40px;max-width:500px;width:90%;text-align:center}
+.oc h2{color:#fd79a8;font-size:28px;margin-bottom:8px}.oc .sub{color:#888;font-size:14px}
+.stps{margin:25px 0;text-align:left;display:flex;flex-direction:column;gap:18px}
+.st{display:flex;gap:14px;align-items:flex-start}.st .n{width:32px;height:32px;border-radius:50%;background:#fd79a8;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.st h4{font-size:14px;margin-bottom:2px}.st p{font-size:12px;color:#888;line-height:1.5}
+.oc button{padding:14px 40px;border:none;border-radius:10px;background:#fd79a8;color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+.oc .sk{color:#555;font-size:12px;cursor:pointer;margin-top:12px;display:inline-block}
+.app{display:none;max-width:700px;width:100%;padding:20px;text-align:center}.app.show{display:block}
+h1{margin-bottom:5px}h1 span{background:linear-gradient(90deg,#fd79a8,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub2{color:#666;margin-bottom:20px;font-size:14px}
+.upload{margin-bottom:20px}
+.upload label{padding:30px;border:2px dashed #333;border-radius:16px;cursor:pointer;display:block;transition:.2s}
+.upload label:hover{border-color:#fd79a8}
+.upload .icon{font-size:40px;margin-bottom:8px}
+.upload .text{color:#888;font-size:14px}
+.upload input{display:none}
+canvas{display:none}
+.preview-img{max-width:100%;max-height:250px;border-radius:12px;margin-bottom:20px;border:2px solid #333;display:none}
+.palette{display:flex;height:80px;border-radius:12px;overflow:hidden;margin-bottom:15px;box-shadow:0 4px 15px rgba(0,0,0,0.3)}
+.palette .swatch{flex:1;cursor:pointer;position:relative;transition:.2s}
+.palette .swatch:hover{flex:2}
+.palette .swatch .tooltip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#333;padding:4px 8px;border-radius:4px;font-size:11px;white-space:nowrap;margin-bottom:4px}
+.palette .swatch:hover .tooltip{display:block}
+.colors-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:15px}
+.color-card{background:#1a1a3e;border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:.15s}
+.color-card:hover{border:1px solid #fd79a8}
+.color-card .swatch-sm{width:36px;height:36px;border-radius:8px;border:1px solid #333}
+.color-card .info{flex:1;text-align:left}
+.color-card .info .hex{font-family:monospace;font-size:14px;font-weight:600}
+.color-card .info .rgb{font-size:11px;color:#888}
+.btns{display:flex;justify-content:center;gap:10px}
+.btns button{padding:10px 20px;border:1px solid #333;border-radius:8px;background:#1a1a3e;color:#fff;cursor:pointer;font-size:13px}
+.btns button:hover{border-color:#fd79a8}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#fd79a8;color:#fff;padding:12px 24px;border-radius:10px;font-weight:600;opacity:0;transition:.3s}.toast.show{opacity:1}
+</style></head><body>
+<div class="ob" id="ob"><div class="oc">
+<h2>Color Palette Extractor</h2><p class="sub">Extract colors from any image</p>
+<div class="stps">
+<div class="st"><div class="n">1</div><div><h4>Upload an Image</h4><p>Click the upload area to select any image from your device (JPG, PNG, GIF, WebP).</p></div></div>
+<div class="st"><div class="n">2</div><div><h4>Extract Colors</h4><p>The app analyzes the image and extracts the 8 most dominant colors automatically.</p></div></div>
+<div class="st"><div class="n">3</div><div><h4>Copy Colors</h4><p>Click any color card to copy its HEX code to your clipboard.</p></div></div>
+</div>
+<button onclick="start()">Open Extractor</button>
+<div class="sk" onclick="start()">Skip</div>
+</div></div>
+<div class="app" id="app">
+<h1><span>Color Palette Extractor</span></h1><p class="sub2">Upload an image, get its color palette</p>
+<div class="upload"><label id="uploadLabel"><div class="icon">&#128247;</div><div class="text">Click to upload an image</div><input type="file" id="fileInput" accept="image/*" onchange="loadImage(event)"></label></div>
+<canvas id="canvas"></canvas><img id="previewImg" class="preview-img">
+<div class="palette" id="palette"></div>
+<div class="colors-list" id="colorsList"></div>
+<div class="btns"><button onclick="copyAll()">Copy All Colors</button></div></div>
+<div class="toast" id="toast">Copied!</div>
+<script>
+var extractedColors=[];
+function start(){document.getElementById('ob').classList.add('hide');document.getElementById('app').classList.add('show');localStorage.setItem('cpe_seen','1')}
+if(localStorage.getItem('cpe_seen')){document.getElementById('ob').classList.add('hide');document.getElementById('app').classList.add('show')}
+function loadImage(e){
+var file=e.target.files[0];if(!file)return;var reader=new FileReader();
+reader.onload=function(ev){var img=new Image();img.onload=function(){
+var canvas=document.getElementById('canvas');var ctx=canvas.getContext('2d');
+var maxW=400;var scale=Math.min(maxW/img.width,maxW/img.height,1);
+canvas.width=img.width*scale;canvas.height=img.height*scale;ctx.drawImage(img,0,0,canvas.width,canvas.height);
+var preview=document.getElementById('previewImg');preview.src=ev.target.result;preview.style.display='block';
+extractColors(canvas,ctx)};img.src=ev.target.result};reader.readAsDataURL(file)}
+function extractColors(canvas,ctx){
+var imgData=ctx.getImageData(0,0,canvas.width,canvas.height).data;var colorMap={};
+for(var i=0;i<imgData.length;i+=16){var r=imgData[i],g=imgData[i+1],b=imgData[i+2];
+r=Math.round(r/32)*32;g=Math.round(g/32)*32;b=Math.round(b/32)*32;
+var key=r+','+g+','+b;colorMap[key]=(colorMap[key]||0)+1}
+var sorted=Object.entries(colorMap).sort(function(a,b){return b[1]-a[1]}).slice(0,8);
+extractedColors=sorted.map(function(e){var parts=e[0].split(',');return{r:parseInt(parts[0]),g:parseInt(parts[1]),b:parseInt(parts[2])}});
+renderPalette()}
+function rgbToHex(r,g,b){return'#'+[r,g,b].map(function(x){return x.toString(16).padStart(2,'0')}).join('')}
+function renderPalette(){
+document.getElementById('palette').innerHTML=extractedColors.map(function(c){var hex=rgbToHex(c.r,c.g,c.b);
+return '<div class="swatch" style="background:'+hex+'" onclick="copy(\\''+hex+'\\')"><span class="tooltip">'+hex+'</span></div>'}).join('');
+document.getElementById('colorsList').innerHTML=extractedColors.map(function(c){var hex=rgbToHex(c.r,c.g,c.b);
+return '<div class="color-card" onclick="copy(\\''+hex+'\\')"><div class="swatch-sm" style="background:'+hex+'"></div><div class="info"><div class="hex">'+hex.toUpperCase()+'</div><div class="rgb">rgb('+c.r+', '+c.g+', '+c.b+')</div></div></div>'}).join('')}
+function copy(hex){navigator.clipboard.writeText(hex);var t=document.getElementById('toast');t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1500)}
+function copyAll(){var text=extractedColors.map(function(c){return rgbToHex(c.r,c.g,c.b)}).join('\\n');navigator.clipboard.writeText(text);var t=document.getElementById('toast');t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1500)}
+</script></body></html>
